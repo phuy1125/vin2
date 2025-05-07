@@ -2,10 +2,11 @@
 
 import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
-import { AiOutlineHeart, AiOutlineComment, AiFillHeart } from 'react-icons/ai';
+import { AiOutlineHeart, AiOutlineComment, AiFillHeart,AiOutlineDelete } from 'react-icons/ai';
 import { useRouter } from 'next/navigation';
 import { getUserBadges, Badge as BadgeType } from '@/utils/userUtils';
-import UltraBadge from '@components/Badge/Badge'; // Import the Ultra Badge component
+import UltraBadge from '@components/Badge/Badge'; // Import the Ultra Badge component\
+import './LikeButton.css';
 interface MediaItem {
   media_url: string;
   media_type?: string;
@@ -293,6 +294,10 @@ export default function SpaceShare() {
   const [selectedProvinceId, setSelectedProvinceId] = useState<number | null>(null);
   const [showOnlyMyPosts, setShowOnlyMyPosts] = useState<boolean>(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [flaggedPosts, setFlaggedPosts] = useState<Post[]>([]);
+  const [flaggedHistory, setFlaggedHistory] = useState<Post[]>([]);
+  const [animatingHearts, setAnimatingHearts] = useState<Record<string, boolean>>({});
+
   // Thêm vào danh sách các state ở đầu component
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
   // Thêm vào đầu component SpaceShare
@@ -413,6 +418,11 @@ const toggleLike = async (postId: string) => {
       }, 1000); // Delay in milliseconds (2000ms = 2 seconds)
     return;
   }
+  // Bắt đầu hiệu ứng animation
+  setAnimatingHearts((prev) => ({
+    ...prev,
+    [postId]: true
+  }));
 
   try {
     const response = await fetch(`/api/posts/${postId}/like`, {
@@ -463,6 +473,13 @@ const toggleLike = async (postId: string) => {
   } catch (error) {
     console.error("Error updating like:", error);
   }
+  // Kết thúc hiệu ứng animation sau 500ms
+  setTimeout(() => {
+    setAnimatingHearts((prev) => ({
+      ...prev,
+      [postId]: false
+    }));
+  }, 500);
 };
 
 
@@ -548,6 +565,29 @@ const toggleLike = async (postId: string) => {
     fetchProvinces();
   }, []);
   
+  const deletePost = async (postId: string) => {
+    try {
+      const response = await fetch(`/api/posts?postId=${postId}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setPosts(posts.filter(post => post._id !== postId));
+        setFlaggedPosts(flaggedPosts.filter(post => post._id !== postId));
+        // Nếu bạn có state flaggedHistory
+        if (flaggedHistory) {
+          setFlaggedHistory(flaggedHistory.filter(post => post._id !== postId));
+        }
+      } else {
+        // Hiển thị lỗi nếu response không ok
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      setError('Failed to delete post. Please try again.');
+    }
+  };
+
 
   return (
     <div className="flex flex-col md:flex-row px-4 md:px-16 py-8 gap-8">
@@ -692,7 +732,18 @@ const toggleLike = async (postId: string) => {
                   <p className="text-xs text-gray-500">{formatPostDate(post.timestamp)}</p>
                   <p className="text-xs text-gray-400">đã đăng 1 bài</p>
                 </div>
-              </div>
+              {/* Delete button - only show for my posts */}
+              {showOnlyMyPosts && post.author_id === currentUserId && (
+                <button
+                onClick={() => deletePost(post._id)}
+                className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors flex items-center gap-1 ml-auto"
+                title="Xóa bài viết"
+                >
+                    <AiOutlineDelete className="text-lg" />
+                    <span className="hidden sm:inline text-sm">Xóa</span>
+                  </button>
+                )}
+                </div>
 
               {/* Content */}
               <div className="mt-2">
@@ -779,16 +830,20 @@ const toggleLike = async (postId: string) => {
               {/* Reactions */}
               <div className="flex gap-6 mt-3 text-gray-700">
               <div
-                  className="flex items-center gap-1 cursor-pointer"
-                  onClick={() => toggleLike(post._id)}
-                >
-                  {likedPosts[post._id] ? (
-                    <AiFillHeart className="text-2xl text-red-500" />
-                  ) : (
-                    <AiOutlineHeart className="text-2xl" />
-                  )}
-                  <span>{post.usersLiked?.length ?? post.likes ?? 0}</span>
-              </div>
+                    className="flex items-center gap-1 cursor-pointer like-button"
+                    onClick={() => toggleLike(post._id)}
+                  >
+                    {likedPosts[post._id] ? (
+                      <AiFillHeart 
+                        className={`text-2xl text-red-500 heart-icon ${animatingHearts[post._id] ? 'heart-pop' : ''}`} 
+                      />
+                    ) : (
+                      <AiOutlineHeart className="text-2xl heart-icon" />
+                    )}
+                    <span className={animatingHearts[post._id] && likedPosts[post._id] ? 'count-jump' : ''}>
+                      {post.usersLiked?.length ?? post.likes ?? 0}
+                    </span>
+                  </div>
                 <div
                   onClick={() => openCommentModal(post)}
                   className="flex items-center gap-1 cursor-pointer"

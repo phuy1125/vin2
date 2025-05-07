@@ -118,6 +118,57 @@ export default function EditSchedulePage({ params }) {
       itinerary: updatedItems
     });
   };
+  const handleDeleteDay = (dayId: string) => {
+    const updatedItinerary = itinerary.itinerary.filter(day => day._id !== dayId);
+    setItinerary({
+      ...itinerary,
+      itinerary: updatedItinerary
+    });
+  };
+  
+  // Hàm thêm ngày mới vào lịch trình
+  const addNewDay = () => {
+    if (!itinerary || !itinerary.itinerary) return;
+    
+    // Tạo bản sao mới của mảng itinerary
+    const newItems = Array.from(itinerary.itinerary);
+    
+    // Tạo ngày mới với số thứ tự là ngày cuối cùng + 1
+    const newDayNumber = newItems.length + 1;
+    const generateTempObjectId = () => {
+      // Tạo một chuỗi 24 ký tự hex để mô phỏng MongoDB ObjectId
+      return Array.from({ length: 24 }, () => 
+        Math.floor(Math.random() * 16).toString(16)
+      ).join('');
+    };
+    const newObjectId = generateTempObjectId();
+    // Tạo một ngày mới với cấu trúc tương tự các ngày hiện có
+    const newDay = {
+      day: newDayNumber,
+      _id: newObjectId,
+      tempId: `day-${newDayNumber}-${Date.now()}`,
+      morning: { activity: '', cost: 0 },
+      afternoon: { activity: '', cost: 0 },
+      evening: { activity: '', cost: 0 }
+    };
+    
+    // Thêm ngày mới vào cuối mảng
+    newItems.push(newDay);
+    
+    // Cập nhật state với ngày mới
+    setItinerary({
+      ...itinerary,
+      itinerary: newItems
+    });
+    
+    // Tự động cuộn xuống ngày mới thêm vào
+    setTimeout(() => {
+      const newDayElement = document.getElementById(`day-${newDay.tempId}`);
+      if (newDayElement) {
+        newDayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  };
 
   // Toggle dropdown
   const toggleDropdown = (index) => {
@@ -296,6 +347,15 @@ export default function EditSchedulePage({ params }) {
       </div>
     );
   }
+  
+  // Cập nhật hiển thị thời gian (cập nhật duration dựa trên số ngày itinerary)
+  const updateDurationText = () => {
+    if (itinerary && itinerary.itinerary) {
+      const numDays = itinerary.itinerary.length;
+      return `${numDays} ngày`;
+    }
+    return itinerary.duration || '';
+  };
 
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
@@ -337,9 +397,8 @@ export default function EditSchedulePage({ params }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian</label>
             <input
               type="text"
-              value={itinerary.duration || ''}
-              onChange={(e) => handleGeneralInfoChange('duration', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={updateDurationText()}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
               readOnly
             />
           </div>
@@ -372,8 +431,10 @@ export default function EditSchedulePage({ params }) {
           {itinerary.itinerary.map((day, index) => (
             <div
               key={day.tempId}
+              id={`day-${day.tempId}`}
               className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50"
             >
+              {/* Day Header với dropdown menu */}
               {/* Day Header với dropdown menu */}
               <div className="bg-blue-500 text-white p-3 flex items-center justify-between">
                 <div className="flex items-center">
@@ -383,7 +444,18 @@ export default function EditSchedulePage({ params }) {
                   <h3 className="text-lg font-medium">Ngày {day.day}</h3>
                 </div>
                 
-                <div className="relative">
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => handleDeleteDay(day._id)}
+                    className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded flex items-center transition-colors"
+                    title="Xóa ngày"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span className="ml-1 text-sm">Xóa</span>
+                  </button>
+                  
                   <button 
                     className="px-3 py-1 bg-blue-600 rounded flex items-center dropdown-toggle hover:bg-blue-700 transition-colors"
                     onClick={() => toggleDropdown(index)}
@@ -520,17 +592,21 @@ export default function EditSchedulePage({ params }) {
               </div>
             </div>
           ))}
+          
         </div>
+        
+        {/* Nút thêm lịch trình mới */}
         <div className="flex justify-end mt-6">
-  <button
-    className="flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-900 text-white rounded-lg py-3 px-5 shadow-md hover:shadow-lg transform hover:translate-y-[-2px] transition-all duration-200"
-  >
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-    </svg>
-    <span className="font-medium">Thêm lịch trình mới</span>
-  </button>
-</div>
+          <button
+            onClick={addNewDay}
+            className="flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-900 text-white rounded-lg py-3 px-5 shadow-md hover:shadow-lg transform hover:translate-y-[-2px] transition-all duration-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="font-medium">Thêm ngày mới</span>
+          </button>
+        </div>
       </div>
 
       {/* Bottom Action Buttons */}

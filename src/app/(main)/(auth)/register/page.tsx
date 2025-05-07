@@ -164,8 +164,9 @@ export default function Register() {
               >
                 Tôi đồng ý với{" "}
                 <a
-                  href="javascript:void(0);"
+                  href="/uploads/Điều Khoản và Điều Kiện của VintelliTour.pdf"
                   className="text-blue-600 font-medium hover:underline ml-1"
+                  target="_blank" // Đảm bảo file PDF mở trong tab mới
                 >
                   Điều khoản và Điều kiện
                 </a>

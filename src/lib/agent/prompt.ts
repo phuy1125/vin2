@@ -15,7 +15,6 @@ export const CLASSIFY_INTENT_PROMPT = `
       - <intent>greeting</intent>: Greetings or asking about assistant capabilities
       - <intent>generateItinerary</intent>: Requests to **create or plan** a new travel itinerary (e.g., "Tạo giúp tôi lịch trình 3 ngày ở Huế")
       - <intent>addItinerary</intent>: Requests to **save** or **add** a previously created itinerary to the user's account — e.g., "thêm vào lịch trình", "lưu lại", "add to my plan"
-      - <intent>findItinerary</intent>: Asking to find/retrieve previously saved itineraries (e.g., “Tôi muốn xem lại lịch trình đi Phú Quốc của tôi”)
       - <intent>updateItinerary</intent>: Asking to modify or confirm changes to an existing itinerary (e.g., “Sửa lại giúp tôi phần ngày 2 của lịch trình”)
     </intents>
 
@@ -34,7 +33,7 @@ export const CLASSIFY_INTENT_PROMPT = `
     Return ONLY one of the following:
     <intent>destination</intent>, <intent>accommodation</intent>, <intent>transportation</intent>,
     <intent>activities</intent>, <intent>general</intent>, <intent>greeting</intent>, <intent>generateItinerary</intent>,
-    <intent>addItinerary</intent>, <intent>findItinerary</intent>, or <intent>updateItinerary</intent>.
+    <intent>addItinerary</intent>, or <intent>updateItinerary</intent>.
     Do not include explanations or extra content.
   </instruction>
 
@@ -55,10 +54,7 @@ export const CLASSIFY_INTENT_PROMPT = `
     <example input="Lưu lại lịch trình này giúp tôi." output="<intent>addItinerary</intent>" />
     <example input="Lịch trình này ổn đó, thêm vào lịch trình đi." output="<intent>addItinerary</intent>" />
 
-    <!-- Find itinerary -->
-    <example input="Tôi muốn xem lại lịch trình ở Phan Thiết." output="<intent>findItinerary</intent>" />
-    <example input="Bạn tìm giúp tôi lịch trình đi Huế tuần trước." output="<intent>findItinerary</intent>" />
-
+    
     <!-- Update itinerary -->
     <example input="Đúng rồi, hãy cập nhật lại ngày 2 giúp tôi." output="<intent>updateItinerary</intent>" />
     <example input="Sửa phần buổi sáng của ngày 1 nhé." output="<intent>updateItinerary</intent>" />
@@ -337,5 +333,16 @@ export const ADD_ITINERARY_PROMPT = `
     <example input="Bạn có thể thêm chuyến đi này vào lịch trình không?" output="Lịch trình cho [destination] đã được thêm thành công." />
   </examples>
 
+</tool-invocation>
+`;
+
+export const UPDATE_ITINERARY_PROMPT = `
+<tool-invocation>
+  <instruction>
+    You are TourMate, a smart travel assistant.
+
+    Your task is to update an existing itinerary **only when the user clearly asks to make changes**
+    Use itineraryId: {itineraryId} and userId: {userId}
+  </instruction>
 </tool-invocation>
 `;

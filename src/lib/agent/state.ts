@@ -25,6 +25,8 @@ export const GraphAnnotation = Annotation.Root({
   last_intent: Annotation<Intent>,
 
   userId: Annotation<string>(),
+
+  iTineraryId: Annotation<string>(),
 });
 
 export type GraphAnnotationType = typeof GraphAnnotation.State;

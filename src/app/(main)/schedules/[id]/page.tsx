@@ -130,10 +130,19 @@ export default function EditSchedulePage({ params }) {
     });
   };
   const handleDeleteDay = (dayId: string) => {
+    // Lọc ra những ngày không bị xóa
     const updatedItinerary = itinerary.itinerary.filter(day => day._id !== dayId);
+    
+    // Cập nhật lại số thứ tự ngày (day number) cho tất cả các ngày
+    const reindexedItinerary = updatedItinerary.map((day, index) => ({
+      ...day,
+      day: index + 1 // Cập nhật lại số thứ tự ngày
+    }));
+    
+    // Cập nhật state với lịch trình mới
     setItinerary({
       ...itinerary,
-      itinerary: updatedItinerary
+      itinerary: reindexedItinerary
     });
   };
   
@@ -486,77 +495,80 @@ export default function EditSchedulePage({ params }) {
             >
               {/* Day Header với dropdown menu */}
               {/* Day Header với dropdown menu */}
-              <div className="bg-blue-500 text-white p-3 flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="h-8 w-8 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold mr-3">
-                    {day.day}
-                  </div>
-                  <h3 className="text-lg font-medium">Ngày {day.day}</h3>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <button 
-                    onClick={() => handleDeleteDay(day._id)}
-                    className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded flex items-center transition-colors"
-                    title="Xóa ngày"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    <span className="ml-1 text-sm">Xóa</span>
-                  </button>
-                
-                  <button 
-                    className="px-3 py-1 bg-blue-600 rounded flex items-center dropdown-toggle hover:bg-blue-700 transition-colors"
-                    onClick={() => toggleDropdown(index)}
-                  >
-                    Di chuyển{" "}
-                    <span className="ml-1">
-                      {openDropdown === index ? "▲" : "▼"}
-                    </span>
-                  </button>
+              {/* Day Header với dropdown menu */}
+<div className="bg-blue-500 text-white p-3 flex items-center justify-between">
+  <div className="flex items-center">
+    <div className="h-8 w-8 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold mr-3">
+      {day.day}
+    </div>
+    <h3 className="text-lg font-medium">Ngày {day.day}</h3>
+  </div>
+  
+  <div className="flex items-center space-x-2">
+    <button 
+      onClick={() => handleDeleteDay(day._id)}
+      className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded flex items-center transition-colors"
+      title="Xóa ngày"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+      <span className="ml-1 text-sm">Xóa</span>
+    </button>
+  
+    <div className="relative"> {/* Thêm div relative để bao quanh nút và dropdown */}
+      <button 
+        className="px-3 py-1 bg-blue-600 rounded flex items-center dropdown-toggle hover:bg-blue-700 transition-colors"
+        onClick={() => toggleDropdown(index)}
+      >
+        Di chuyển{" "}
+        <span className="ml-1">
+          {openDropdown === index ? "▲" : "▼"}
+        </span>
+      </button>
 
-                  {openDropdown === index && (
-                    <div className="absolute right-0 top-10 bg-white shadow-lg rounded-md border border-gray-200 w-48 z-10 dropdown-menu">
-                      <div className="p-2 text-gray-700 text-sm border-b">
-                        Di chuyển đến vị trí:
-                      </div>
-                      {itinerary.itinerary.map((_, targetIndex) => (
-                        <button
-                          key={targetIndex}
-                          onClick={() => moveDay(index, targetIndex)}
-                          disabled={index === targetIndex}
-                          className="w-full text-left p-2 hover:bg-blue-50 disabled:text-gray-400 disabled:hover:bg-white"
-                        >
-                          {index === targetIndex ? (
-                            <span className="flex items-center text-black">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-4 w-4 mr-1"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                              Ngày {targetIndex + 1} (vị trí hiện tại)
-                            </span>
-                          ) : (
-                            <span className="text-black">
-                              Ngày {targetIndex + 1}
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+      {openDropdown === index && (
+        <div className="absolute right-0 mt-1 bg-white shadow-lg rounded-md border border-gray-200 w-48 z-10 dropdown-menu">
+          <div className="p-2 text-gray-700 text-sm border-b">
+            Di chuyển đến vị trí:
+          </div>
+          {itinerary.itinerary.map((_, targetIndex) => (
+            <button
+              key={targetIndex}
+              onClick={() => moveDay(index, targetIndex)}
+              disabled={index === targetIndex}
+              className="w-full text-left p-2 hover:bg-blue-50 disabled:text-gray-400 disabled:hover:bg-white"
+            >
+              {index === targetIndex ? (
+                <span className="flex items-center text-black">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Ngày {targetIndex + 1} (vị trí hiện tại)
+                </span>
+              ) : (
+                <span className="text-black">
+                  Ngày {targetIndex + 1}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</div>
 
               {/* Day Content */}
               <div className="p-4">

@@ -53,6 +53,7 @@
     "formidable": "^3.5.2",
     "framer-motion": "^12.9.2",
     "franc": "^6.2.0",
+    "html2pdf.js": "^0.10.3",
     "jose": "^6.0.10",
     "jsonwebtoken": "^9.0.2",
     "langchain": "^0.3.24",

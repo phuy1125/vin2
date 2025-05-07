@@ -1,5 +1,5 @@
 import { Intent, GraphAnnotation } from "./state";
-import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 
 import { z } from "zod";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
@@ -17,11 +17,13 @@ import {
   SEARCH_SYSTEM_PROMPT,
   ADD_ITINERARY_PROMPT,
   GENERAL_PROMPT,
+  // UPDATE_ITINERARY_PROMPT,
 } from "./prompt";
 import { TOOLS } from "../agent/tools";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import "dotenv/config";
 import { formatMessages, getRecentMessages } from "./utils";
+import { IconAd2, IconDice6 } from "@tabler/icons-react";
 
 // MemorySaver instance for saving state
 const memory = new MemorySaver();
@@ -39,6 +41,9 @@ const intentSchema = z.object({
       Intent.Activities,
       Intent.Itinerary,
       Intent.GenerateItinerary,
+      Intent.FindItinerary,
+      Intent.UpdateItinerary,
+      Intent.Weather,
     ])
     .describe("The type of intent"),
 });
@@ -125,6 +130,9 @@ async function callModel(
     case "destination":
       promptTemplate = SEARCH_SYSTEM_PROMPT;
       break;
+    case "weather":
+      promptTemplate = SEARCH_SYSTEM_PROMPT;
+      break;
     case "transportation":
       promptTemplate = SEARCH_SYSTEM_PROMPT;
       break;
@@ -140,8 +148,6 @@ async function callModel(
     default:
       promptTemplate = GENERAL_PROMPT;
   }
-
-  console.log("Prompt Template:", promptTemplate);
 
   const response = await model.invoke([
     {

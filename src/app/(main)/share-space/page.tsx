@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { AiOutlineHeart, AiOutlineComment, AiFillHeart } from 'react-icons/ai';
-
+import { useRouter } from 'next/navigation';
 interface MediaItem {
   media_url: string;
   media_type?: string;
@@ -32,6 +32,7 @@ interface Post {
   timestamp: string;
   author_name: string;
   author_avatar: string;
+  author_id: string;
   media: MediaItem[];
   tags: string[];
   likes: number;
@@ -52,6 +53,14 @@ function CommentModal({ onClose, postId, postMedia = [],author_name, author_avat
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Thêm vào đầu component SpaceShare
+  const router = useRouter();
+  const [routerIsReady, setRouterIsReady] = useState(false);
+
+  // Check if router is ready
+    useEffect(() => {
+      setRouterIsReady(true);
+    }, [router]);
 
   // Default media if none is provided
   const media = postMedia.length > 0 ? postMedia : [{ media_url: '/img/placeholder.png' }];
@@ -88,6 +97,9 @@ function CommentModal({ onClose, postId, postMedia = [],author_name, author_avat
     const userId = localStorage.getItem('userId');
     if (!userId) {
       setError('Bạn cần đăng nhập để bình luận.');
+      setTimeout(() => {
+        router.push('/login'); // Redirect to the login page after a short delay
+      }, 1000); // Delay in milliseconds (2000ms = 2 seconds)
       return;
     }
     try {
@@ -243,11 +255,42 @@ export default function SpaceShare() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState<number | null>(null);
+  const [showOnlyMyPosts, setShowOnlyMyPosts] = useState<boolean>(false);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  // Thêm vào danh sách các state ở đầu component
+  const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
+  // Thêm vào đầu component SpaceShare
+  const router = useRouter();
+  const [routerIsReady, setRouterIsReady] = useState(false);
 
+  // Check if router is ready
+    useEffect(() => {
+      setRouterIsReady(true);
+    }, [router]);
 
-  const filteredPosts = selectedProvinceId
-  ? posts.filter(post => post.provinceGid === selectedProvinceId)
-  : posts;
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (sortOrder === 'newest') {
+      // Newest first
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    } else {
+      // Oldest first
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    }
+  });
+
+  const filteredPosts = sortedPosts.filter(post => {
+    // Filter by province if selected
+    if (selectedProvinceId && post.provinceGid !== selectedProvinceId) {
+      return false;
+    }
+    
+    // Filter by current user if showOnlyMyPosts is true
+    if (showOnlyMyPosts && post.author_id !== currentUserId) {
+      return false;
+    }
+    
+    return true;
+  });
 
   // Fetch posts from the database
   useEffect(() => {
@@ -299,6 +342,14 @@ export default function SpaceShare() {
 
 // Toggle like for a post
 const toggleLike = async (postId: string) => {
+  if (!currentUserId) {
+    setError('Bạn cần đăng nhập để bình luận.');
+      setTimeout(() => {
+        router.push('/login'); // Redirect to the login page after a short delay
+      }, 1000); // Delay in milliseconds (2000ms = 2 seconds)
+    return;
+  }
+
   try {
     const response = await fetch(`/api/posts/${postId}/like`, {
       method: "POST",
@@ -353,6 +404,7 @@ const toggleLike = async (postId: string) => {
 
 
 
+
 /////////////////////// Like
   // Format the post date
   const formatPostDate = (timestamp: string) => {
@@ -383,26 +435,28 @@ const toggleLike = async (postId: string) => {
 
 
   // Navigation functions for post images
-  const nextImage = (postId: string, postIndex: number) => {
-    const post = posts[postIndex];
-    if (post && post.media.length > 1) {
-      setCurrentImageIndices((prevIndices) => {
+  const nextImage = (postId:string, postIndex:number) => {
+    // Tìm post trực tiếp từ ID thay vì chỉ số
+    const post = posts.find(p => p._id === postId);
+    
+    if (post && post.media && post.media.length > 1) {
+      setCurrentImageIndices(prevIndices => {
         const currentIndex = prevIndices[postId] !== undefined ? prevIndices[postId] : 0;
-        const newIndices = { ...prevIndices };
-        newIndices[postId] = (currentIndex + 1) % post.media.length;
-        return newIndices;
+        const newIndex = (currentIndex + 1) % post.media.length;
+        return { ...prevIndices, [postId]: newIndex };
       });
     }
   };
   
-  const prevImage = (postId: string, postIndex: number) => {
-    const post = posts[postIndex];
-    if (post && post.media.length > 1) {
-      setCurrentImageIndices((prevIndices) => {
+  const prevImage = (postId:string, postIndex:number) => {
+    // Tìm post trực tiếp từ ID thay vì chỉ số
+    const post = posts.find(p => p._id === postId);
+    
+    if (post && post.media && post.media.length > 1) {
+      setCurrentImageIndices(prevIndices => {
         const currentIndex = prevIndices[postId] !== undefined ? prevIndices[postId] : 0;
-        const newIndices = { ...prevIndices };
-        newIndices[postId] = (currentIndex - 1 + post.media.length) % post.media.length;
-        return newIndices;
+        const newIndex = (currentIndex - 1 + post.media.length) % post.media.length;
+        return { ...prevIndices, [postId]: newIndex };
       });
     }
   };
@@ -435,13 +489,80 @@ const toggleLike = async (postId: string) => {
     <div className="flex flex-col md:flex-row px-4 md:px-16 py-8 gap-8">
       {/* LEFT COLUMN */}
       <div className="flex-1">
-      <h2 className="text-xl text-gray-700 font-semibold border-b pb-2 border-gray-300 mb-6">
-          {selectedProvinceId
-            ? `Tỉnh: ${provinces.find(p => p._id === selectedProvinceId)?.name || ''}`
-            : "Tất cả tỉnh"}
-          <div className="w-25 h-1 bg-purple-500 mt-1 rounded-full" />
-        </h2>
+        {/* Header with filters inline */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b pb-2 border-gray-300 mb-6">
+          <div className="flex flex-col">
+            <h2 className="text-xl text-gray-700 font-semibold">
+              {selectedProvinceId
+                ? `Tỉnh: ${provinces.find(p => p._id === selectedProvinceId)?.name || ''}`
+                : "Tất cả tỉnh"}
+            </h2>
+            <div className="w-25 h-1 bg-purple-500 mt-1 rounded-full" />
+          </div>
+          
+          {/* Move filters here - inline with title */}
+          <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+            {/* My Posts Filter Button */}
+            <button
+            onClick={() => setShowOnlyMyPosts(!showOnlyMyPosts)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all duration-300 shadow-sm hover:shadow-md focus:outline-none ${
+              showOnlyMyPosts
+                ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium"
+                : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500"
+            }`}
+          >
+            <span className="text-xs font-semibold flex items-center">
+              {showOnlyMyPosts ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              )}
+              {showOnlyMyPosts ? "ĐANG XEM:" : "XEM:"}
+            </span>
+            <span className={`font-medium ${showOnlyMyPosts ? "text-white" : "text-blue-600"} cursor-pointer mb-0.5`}>
+              Bài viết của tôi
+            </span>
+            {showOnlyMyPosts && (
+              <span
+                className="ml-2 bg-white bg-opacity-20 text-white rounded-full h-5 w-5 flex items-center justify-center cursor-pointer hover:bg-opacity-30"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowOnlyMyPosts(false);
+                }}
+              >
+                ✕
+              </span>
+            )}
+        </button>
 
+
+
+            {/* Sort Order Toggle */}
+            <button
+              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                {sortOrder === 'newest' ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                )}
+              </svg>
+              <span className="font-medium cursor-pointer">{sortOrder === 'newest' ? 'Mới nhất' : 'Cũ nhất'}</span>
+            </button>
+          </div>
+        </div>
         {isLoading ? (
           <div className="text-center py-8">Loading posts...</div>
         ) : error ? (
@@ -464,7 +585,18 @@ const toggleLike = async (postId: string) => {
                 </button>
               </div>
             )}
-          {filteredPosts.map((post, index) => (
+            {/* Show user filter indicator */}
+            {showOnlyMyPosts && (
+              <div className="mb-4 text-sm text-gray-600">
+                Đang xem: <strong className="text-blue-600">Bài viết của tôi</strong>
+              </div>
+            )}
+            {filteredPosts.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          {showOnlyMyPosts ? "Bạn chưa có bài viết nào" : "Không có bài viết nào phù hợp với bộ lọc"}
+        </div>
+      ) : (
+          filteredPosts.map((post, index) => (
             <div key={post._id} className="mb-12">
               {/* User Info */}
               <div className="flex items-center gap-3 mb-2">
@@ -483,7 +615,32 @@ const toggleLike = async (postId: string) => {
               </div>
 
               {/* Content */}
-              <p className="mb-3 text-gray-500">{post.content}</p>
+              <div className="mt-2">
+                  <p className={`text-gray-500 mb-3 ${expandedPosts[post._id] ? '' : 'line-clamp-3'}`}>
+                    {post.content}
+                  </p>
+
+                  {/* Nếu content dài thì mới show nút Xem thêm */}
+                  {post.content.length > 100 && (
+                    <button
+                      onClick={() => setExpandedPosts(prev => ({ ...prev, [post._id]: !prev[post._id] }))}
+                      className="mb-3 text-blue-500 text-xs rounded-full px-3 py-1 border border-blue-500 hover:bg-blue-500 hover:text-white transition-colors duration-300 flex items-center gap-1"
+                    >
+                      <span>
+                        {expandedPosts[post._id] ? 'Thu gọn' : 'Xem thêm'}
+                      </span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className={`h-3 w-3 transition-transform duration-300 ${expandedPosts[post._id] ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
 
               {/* Show media if available */}
               {post.media && post.media.length > 0 && (
@@ -561,7 +718,8 @@ const toggleLike = async (postId: string) => {
                 </div>
               </div>
             </div>
-          ))}
+          ))
+        )}
           </>  
         )}
       </div>

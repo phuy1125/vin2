@@ -86,7 +86,10 @@ function CommentModal({ onClose, postId, postMedia = [],author_name, author_avat
     if (!comment.trim()) return;
     const userId = localStorage.getItem('userId');
     if (!userId) {
-      window.location.href = '/login';
+      setError('Bạn cần đăng nhập để bình luận.');
+      setTimeout(() => {
+        window.location.href = '/login'; // Redirect to the login page after a short delay
+      }, 1000); // Delay in milliseconds (2000ms = 2 seconds)
       return;
     }
     try {
@@ -243,7 +246,8 @@ export default function SpaceShare(req: Request) {
   const [locationName, setLocationName] = useState<string | null>(null);
   const params = useParams<{ id: string }>();
   const locationId = params?.id ?? null;
-
+  // Thêm vào danh sách các state ở đầu component
+  const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
 
   const filteredPosts = selectedTag
   ? posts.filter(post => post.tags.includes(selectedTag))
@@ -332,6 +336,13 @@ export default function SpaceShare(req: Request) {
 
 // Toggle like for a post
 const toggleLike = async (postId: string) => {
+  if (!currentUserId) {
+    setError('Bạn cần đăng nhập để bình luận.');
+      setTimeout(() => {
+        window.location.href = '/login'; // Redirect to the login page after a short delay
+      }, 1000); // Delay in milliseconds (2000ms = 2 seconds)
+    return;
+  }
   try {
     const response = await fetch(`/api/posts/${postId}/like`, {
       method: "POST",
@@ -501,7 +512,33 @@ const toggleLike = async (postId: string) => {
               </div>
 
               {/* Content */}
-              <p className="mb-3 text-gray-500">{post.content}</p>
+              <div className="mt-2">
+                    <p className={`text-gray-500 mb-3 ${expandedPosts[post._id] ? '' : 'line-clamp-3'}`}>
+                      {post.content}
+                    </p>
+
+                    {/* Nếu content dài thì mới show nút Xem thêm */}
+                    {post.content.length > 100 && (
+                      <button
+                        onClick={() => setExpandedPosts(prev => ({ ...prev, [post._id]: !prev[post._id] }))}
+                        className="mb-3 text-blue-500 text-xs underline rounded-full px-3 py-1 border border-blue-500 hover:bg-blue-500 hover:text-white transition-colors duration-300 flex items-center gap-1"
+                      >
+                        <span>
+                          {expandedPosts[post._id] ? 'Thu gọn' : 'Xem thêm'}
+                        </span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={`h-3 w-3 transition-transform duration-300 ${expandedPosts[post._id] ? 'rotate-180' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+
 
               {/* Show media if available */}
               {post.media && post.media.length > 0 && (

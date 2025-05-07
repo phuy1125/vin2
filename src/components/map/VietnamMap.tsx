@@ -208,7 +208,7 @@
     const handleBackClick = () => {
       if (!map || !geojsonLayer) return;
 
-      map.setView([14.0583, 108.2772], 6);
+      map.setView([14.0583, 108.2772], 5);
       unlockMapInteraction(map);
 
       geojsonLayer.eachLayer((layer) => {

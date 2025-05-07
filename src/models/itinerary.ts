@@ -2,7 +2,10 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 import { IUser } from "@/models/user"; // Import interface User
 
 // Định nghĩa interface cho Itinerary
-interface IItinerary extends Document {
+export interface IItinerary extends Document {
+  _id: Types.ObjectId;
+  createdAt?: Date;
+
   user: Types.ObjectId;
   destination: string;
   duration: string;
@@ -39,29 +42,32 @@ const activityBlock = {
   ],
 };
 
-const itinerarySchema = new Schema<IItinerary>({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  destination: {
-    type: String,
-    required: true,
-  },
-  duration: {
-    type: String,
-    required: true,
-  },
-  itinerary: [
-    {
-      day: { type: Number, required: true },
-      morning: activityBlock,
-      afternoon: activityBlock,
-      evening: activityBlock,
+const itinerarySchema = new Schema<IItinerary>(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
-  ],
-});
+    destination: {
+      type: String,
+      required: true,
+    },
+    duration: {
+      type: String,
+      required: true,
+    },
+    itinerary: [
+      {
+        day: { type: Number, required: true },
+        morning: activityBlock,
+        afternoon: activityBlock,
+        evening: activityBlock,
+      },
+    ],
+  },
+  { timestamps: true } // Tự động thêm createdAt và updatedAt
+);
 
 // Tạo model Itinerary
 const Itinerary = mongoose.model<IItinerary>("Itinerary", itinerarySchema);

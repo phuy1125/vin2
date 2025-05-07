@@ -79,7 +79,7 @@
                   }
                   <div style="display: flex; justify-content: center; gap: 8px;">
                     <a href="/location/post/${loc._id}?provinceGid=${provinceGid}" style="padding: 6px 12px; background-color: #007bff; color: white; text-decoration: none; border-radius: 6px; font-size: 14px;">
-                      Xem bài viết
+                      Xem và tạo bài viết
                     </a>
                     <a href="/attractions/${loc._id}?tab=streetview" target="_blank" style="padding: 6px 12px; background-color: #28a745; color: white; text-decoration: none; border-radius: 6px; font-size: 14px;">
                       Ảnh 360

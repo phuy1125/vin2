@@ -135,7 +135,7 @@
       const initMap = () => {
         const mapInstance = L.map(mapRef.current!).setView(
           [14.0583, 108.2772],
-          6
+          5
         );
       L.tileLayer('https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=RCfpOibQtfADVJ8TBhgS#0.7/2.63872/-12.32731', {
         attribution: '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> contributors',
@@ -173,7 +173,7 @@
                           : ""
                       }
                       <div style="text-align: center;">
-                        <a href="/province/${feature.properties.gid}?tab=streetview" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #28a745; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">
+                        <a href="/province/${feature.properties.gid}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #28a745; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px;">
                           Xem thông tin và tham quan
                         </a>
                       </div>
@@ -208,7 +208,7 @@
     const handleBackClick = () => {
       if (!map || !geojsonLayer) return;
 
-      map.setView([14.0583, 108.2772], 6);
+      map.setView([14.0583, 108.2772], 5);
       unlockMapInteraction(map);
 
       geojsonLayer.eachLayer((layer) => {

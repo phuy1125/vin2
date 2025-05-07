@@ -40,6 +40,7 @@ const SpaceShare: React.FC = () => {
   const [flaggedHistory, setFlaggedHistory] = useState<Post[]>([]);
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
+   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -61,6 +62,16 @@ const SpaceShare: React.FC = () => {
     fetchPosts();
   }, []);
 
+
+  const sortedPosts = [...posts].sort((a, b) => {
+    if (sortOrder === 'newest') {
+      // Newest first
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    } else {
+      // Oldest first
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    }
+  });
   // Validate all posts for moderation
   const validateAllPosts = async () => {
     setIsValidating(true);
@@ -189,43 +200,55 @@ const SpaceShare: React.FC = () => {
   };
 
   // Next image in carousel
-  const nextImage = (postId: string, postIndex: number) => {
-    const post = posts[postIndex];
-    if (post && post.media.length > 1) {
-      setCurrentImageIndices((prevIndices) => {
+  const nextImage = (postId:string, postIndex:number) => {
+    // Tìm post trực tiếp từ ID thay vì chỉ số
+    const post = posts.find(p => p._id === postId);
+    
+    if (post && post.media && post.media.length > 1) {
+      setCurrentImageIndices(prevIndices => {
         const currentIndex = prevIndices[postId] !== undefined ? prevIndices[postId] : 0;
-        const newIndices = { ...prevIndices };
-        newIndices[postId] = (currentIndex + 1) % post.media.length;
-        return newIndices;
+        const newIndex = (currentIndex + 1) % post.media.length;
+        return { ...prevIndices, [postId]: newIndex };
       });
     }
   };
   
-  // Previous image in carousel
-  const prevImage = (postId: string, postIndex: number) => {
-    const post = posts[postIndex];
-    if (post && post.media.length > 1) {
-      setCurrentImageIndices((prevIndices) => {
+  const prevImage = (postId:string, postIndex:number) => {
+    // Tìm post trực tiếp từ ID thay vì chỉ số
+    const post = posts.find(p => p._id === postId);
+    
+    if (post && post.media && post.media.length > 1) {
+      setCurrentImageIndices(prevIndices => {
         const currentIndex = prevIndices[postId] !== undefined ? prevIndices[postId] : 0;
-        const newIndices = { ...prevIndices };
-        newIndices[postId] = (currentIndex - 1 + post.media.length) % post.media.length;
-        return newIndices;
+        const newIndex = (currentIndex - 1 + post.media.length) % post.media.length;
+        return { ...prevIndices, [postId]: newIndex };
       });
     }
   };
 
   // Get posts based on current view mode
   const getDisplayPosts = () => {
+    let postsToDisplay;
     switch (viewMode) {
       case "flagged":
-        return flaggedPosts;
+        postsToDisplay = flaggedPosts;
+        break;
       case "history":
-        // Hiển thị các bài viết có status là 'flagged'
-        return posts.filter(post => post.status === 'flagged');
+        postsToDisplay = posts.filter(post => post.status === 'flagged');
+        break;
       case "normal":
       default:
-        return posts.filter(post => post.status !== 'flagged');
+        postsToDisplay = posts.filter(post => post.status !== 'flagged');
     }
+    
+    // Sort posts based on sortOrder
+    return [...postsToDisplay].sort((a, b) => {
+      if (sortOrder === 'newest') {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      } else {
+        return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      }
+    });
   };
   
   // Thêm hàm mới để xác nhận tất cả các bài viết bị đánh dấu
@@ -308,6 +331,26 @@ const SpaceShare: React.FC = () => {
             >
               <MdHistory />
               Lịch sử kiểm duyệt ({posts.filter(post => post.status === 'flagged').length})
+            </button>
+              
+            <button
+              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+              className="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-lg text-sm bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                {sortOrder === 'newest' ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                )}
+              </svg>
+              <span className="font-medium cursor-pointer">{sortOrder === 'newest' ? 'Mới nhất' : 'Cũ nhất'}</span>
             </button>
 
           </div>

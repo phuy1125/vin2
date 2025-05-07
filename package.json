@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "install": "npm install --legacy-peer-deps"
+    "install": "npm install --force"
   },
   "dependencies": {
     "@ansur/leaflet-pulse-icon": "^0.1.1",

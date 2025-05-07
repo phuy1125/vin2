@@ -4,6 +4,8 @@ import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { AiOutlineHeart, AiOutlineComment, AiFillHeart } from 'react-icons/ai';
 import { useRouter } from 'next/navigation';
+import { getUserBadges, Badge as BadgeType } from '@/utils/userUtils';
+import UltraBadge from '@components/Badge/Badge'; // Import the Ultra Badge component
 interface MediaItem {
   media_url: string;
   media_type?: string;
@@ -23,6 +25,7 @@ interface CommentModalProps {
   postMedia?: MediaItem[];
   author_name: string;
   author_avatar: string;
+  author_id: string;
 }
 
 interface Post {
@@ -47,15 +50,35 @@ interface Province {
 }
 
 
-function CommentModal({ onClose, postId, postMedia = [],author_name, author_avatar }: CommentModalProps) {
+function CommentModal({ onClose, postId, postMedia = [],author_name, author_avatar,author_id }: CommentModalProps) {
   const [comment, setComment] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authorBadges, setAuthorBadges] = useState<BadgeType[]>([]);
+  const [loadingBadges, setLoadingBadges] = useState(false);
   // Thêm vào đầu component SpaceShare
   const router = useRouter();
   const [routerIsReady, setRouterIsReady] = useState(false);
+
+  useEffect(() => {
+    const fetchAuthorBadges = async () => {
+      if (author_id) {
+        setLoadingBadges(true);
+        try {
+          const badges = await getUserBadges(author_id);
+          setAuthorBadges(badges);
+        } catch (error) {
+          console.error(`Error fetching badges for author ${author_id}:`, error);
+        } finally {
+          setLoadingBadges(false);
+        }
+      }
+    };
+
+    fetchAuthorBadges();
+  }, [author_id]);
 
   // Check if router is ready
     useEffect(() => {
@@ -177,6 +200,19 @@ function CommentModal({ onClose, postId, postMedia = [],author_name, author_avat
         <div className="flex items-center gap-2 border-b border-gray-700 pb-2 relative">
           <Image src={author_avatar} alt="avatar" width={32} height={32} className="rounded-full" />
           <p className="font-semibold">{author_name}</p>
+
+          {authorBadges.length > 0 && (
+                <div className="flex items-center gap-1 scale-90 transform-origin-left">
+                  {authorBadges.map((badge, idx) => (
+                    <UltraBadge 
+                      key={idx} 
+                      type={badge.type} 
+                      label={badge.label} 
+                    />
+                  ))}
+                </div>
+              )}
+
           <button 
             onClick={onClose} 
             className="absolute top-2 right-2 text-black/50 hover:text-indigo-700 cursor-pointer font-bold">
@@ -267,7 +303,35 @@ export default function SpaceShare() {
     useEffect(() => {
       setRouterIsReady(true);
     }, [router]);
+  //
+  const [authorBadges, setAuthorBadges] = useState<Record<string, BadgeType[]>>({});
+  
+  // Add this useEffect to fetch badges for each post author
+      useEffect(() => {
+        const fetchBadgesForPosts = async () => {
+          if (posts.length > 0) {
+            const badgeMap: Record<string, BadgeType[]> = {};
+            
+            for (const post of posts) {
+              if (post.author_id) {
+                try {
+                  const authorBadges = await getUserBadges(post.author_id);
+                  badgeMap[post.author_id] = authorBadges;
+                } catch (error) {
+                  console.error(`Error fetching badges for author ${post.author_id}:`, error);
+                }
+              }
+            }
+            
+            // Store the badges in state
+            setAuthorBadges(badgeMap);
+          }
+        };
 
+  fetchBadgesForPosts();
+}, [posts]);
+
+  //
   const sortedPosts = [...posts].sort((a, b) => {
     if (sortOrder === 'newest') {
       // Newest first
@@ -609,6 +673,22 @@ const toggleLike = async (postId: string) => {
                 />
                 <div>
                   <p className="text-sm font-bold text-orange-600">{post.author_name || "Hello World"}</p>
+
+                  {/* Display badge if available */}
+                {post.author_id && authorBadges[post.author_id]?.length > 0 && (
+                  <div className="flex items-center gap-1 mt-1">
+                    {authorBadges[post.author_id].map((badge, idx) => (
+                      <div className="scale-80 transform-origin-right ml-[-12px]"> {/* Thu nhỏ xuống còn 75% */}
+                      <UltraBadge 
+                        key={idx} 
+                        type={badge.type} 
+                        label={badge.label} 
+                      />
+                    </div>
+                    ))}
+                  </div>
+                )}
+
                   <p className="text-xs text-gray-500">{formatPostDate(post.timestamp)}</p>
                   <p className="text-xs text-gray-400">đã đăng 1 bài</p>
                 </div>
@@ -616,7 +696,7 @@ const toggleLike = async (postId: string) => {
 
               {/* Content */}
               <div className="mt-2">
-                  <p className={`text-gray-500 mb-3 ${expandedPosts[post._id] ? '' : 'line-clamp-3'}`}>
+                  <p className={`text-gray-800 mb-3 ${expandedPosts[post._id] ? '' : 'line-clamp-3'}`}>
                     {post.content}
                   </p>
 
@@ -768,6 +848,7 @@ const toggleLike = async (postId: string) => {
           postMedia={selectedPost.media} 
           author_name={selectedPost.author_name}
           author_avatar={selectedPost.author_avatar}
+          author_id={selectedPost.author_id}
         />
       )}
     </div>

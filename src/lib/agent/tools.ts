@@ -3,7 +3,10 @@ import { DynamicStructuredTool } from "@langchain/core/tools";
 import { MongoClient } from "mongodb";
 import Itinerary from "@/models/itinerary";
 import dbConnect from "../dbConnect";
-
+import { IItinerary } from "@/models/itinerary";
+import { vi } from "date-fns/locale";
+import { formatDistanceToNow } from "date-fns";
+import { getItineraryChangesSummaryDetailed } from "./utils";
 import { z } from "zod";
 
 const MONGODB_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
@@ -78,9 +81,62 @@ const addItineraryTool = new DynamicStructuredTool({
   },
 });
 
+const findItinerariesTool = new DynamicStructuredTool({
+  name: "find_itineraries",
+  description:
+    "Find itineraries for a user and return them in XML format to help select one",
+  schema: z.object({
+    userId: z.string(),
+  }),
+
+  func: async ({ userId }) => {
+    await dbConnect();
+
+    const itineraries = await Itinerary.find({ user: userId }).lean();
+
+    if (itineraries.length === 0) {
+      return {
+        success: false,
+        message: "Không tìm thấy lịch trình nào cho người dùng này.",
+      };
+    }
+
+    // Tạo danh sách XML
+    const itineraryContextList = itineraries.map((item, index) => {
+      const id = item._id.toString();
+      const destination = item.destination;
+      const duration = item.duration;
+      const indexValue = index + 1;
+
+      return {
+        id,
+        index: indexValue,
+        destination,
+        duration,
+        tag: `<iTinerary index=${indexValue} id="${id}">${destination} - ${duration}</iTinerary>`,
+      };
+    });
+
+    return {
+      success: true,
+      message: `Tôi đã tìm thấy ${itineraries.length} lịch trình. Bạn muốn chọn lịch trình nào để cập nhật?`,
+      readableList: itineraryContextList
+        .map((item) => `- ${item.destination} - ${item.duration}`)
+        .join("\n"),
+      xmlTags: itineraryContextList.map((item) => item.tag).join("\n"),
+      itineraryContextList, // <-- phần structured context bạn cần
+    };
+  },
+});
+
 const searchTavily = new TavilySearch({
-  maxResults: 5,
+  maxResults: 3,
   searchDepth: "advanced",
 });
 
-export const TOOLS = [searchTavily, addItineraryTool];
+export const TOOLS = [
+  searchTavily,
+  addItineraryTool,
+  findItinerariesTool,
+  // updateItineraryTool,
+];

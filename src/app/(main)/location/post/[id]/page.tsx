@@ -8,7 +8,8 @@ import { AiOutlineHeart, AiOutlineComment, AiFillHeart, AiOutlinePlus} from 'rea
 import { useSearchParams } from 'next/navigation';
 import { Dialog } from '@headlessui/react';
 import jwt from "jsonwebtoken";
-
+import { getUserBadges, Badge as BadgeType } from '@/utils/userUtils';
+import UltraBadge from '@components/Badge/Badge'; // Import the Ultra Badge component
 
 interface MediaItem {
   media_url: string;
@@ -29,6 +30,7 @@ interface CommentModalProps {
   postMedia?: MediaItem[];
   author_name: string;
   author_avatar: string;
+  author_id: string;
 }
 
 interface Post {
@@ -38,6 +40,7 @@ interface Post {
   timestamp: string;
   author_name: string;
   author_avatar: string;
+  author_id: string;
   media: MediaItem[];
   tags: string[];
   likes: number;
@@ -45,15 +48,34 @@ interface Post {
   usersLiked?: string[];
 }
 
-function CommentModal({ onClose, postId, postMedia = [],author_name, author_avatar }: CommentModalProps) {
+function CommentModal({ onClose, postId, postMedia = [],author_name, author_avatar,author_id }: CommentModalProps) {
   const [comment, setComment] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [authorBadges, setAuthorBadges] = useState<BadgeType[]>([]);
+  const [loadingBadges, setLoadingBadges] = useState(false);
   // Default media if none is provided
   const media = postMedia.length > 0 ? postMedia : [{ media_url: '/img/placeholder.png' }];
+///Huy hieu
+  useEffect(() => {
+      const fetchAuthorBadges = async () => {
+        if (author_id) {
+          setLoadingBadges(true);
+          try {
+            const badges = await getUserBadges(author_id);
+            setAuthorBadges(badges);
+          } catch (error) {
+            console.error(`Error fetching badges for author ${author_id}:`, error);
+          } finally {
+            setLoadingBadges(false);
+          }
+        }
+      };
+  
+      fetchAuthorBadges();
+    }, [author_id]);
 
   // Fetch comments from the database
   const fetchComments = useCallback(async () => {
@@ -167,6 +189,19 @@ function CommentModal({ onClose, postId, postMedia = [],author_name, author_avat
         <div className="flex items-center gap-2 border-b border-gray-700 pb-2 relative">
           <Image src={author_avatar} alt="avatar" width={32} height={32} className="rounded-full" />
           <p className="font-semibold">{author_name}</p>
+
+          {authorBadges.length > 0 && (
+                          <div className="flex items-center gap-1 scale-90 transform-origin-left">
+                            {authorBadges.map((badge, idx) => (
+                              <UltraBadge 
+                                key={idx} 
+                                type={badge.type} 
+                                label={badge.label} 
+                              />
+                            ))}
+                          </div>
+                        )}
+
           <button 
             onClick={onClose} 
             className="absolute top-2 right-2 text-black/50 hover:text-indigo-700 cursor-pointer font-bold">
@@ -422,6 +457,31 @@ const toggleLike = async (postId: string) => {
     }
   }, [posts]);
 
+  const [authorBadges, setAuthorBadges] = useState<Record<string, BadgeType[]>>({});
+   // Add this useEffect to fetch badges for each post author
+        useEffect(() => {
+          const fetchBadgesForPosts = async () => {
+            if (posts.length > 0) {
+              const badgeMap: Record<string, BadgeType[]> = {};
+              
+              for (const post of posts) {
+                if (post.author_id) {
+                  try {
+                    const authorBadges = await getUserBadges(post.author_id);
+                    badgeMap[post.author_id] = authorBadges;
+                  } catch (error) {
+                    console.error(`Error fetching badges for author ${post.author_id}:`, error);
+                  }
+                }
+              }
+              
+              // Store the badges in state
+              setAuthorBadges(badgeMap);
+            }
+          };
+  
+    fetchBadgesForPosts();
+  }, [posts]);
 
   // Navigation functions for post images
   const nextImage = (postId: string, postIndex: number) => {
@@ -506,6 +566,21 @@ const toggleLike = async (postId: string) => {
                 />
                 <div>
                   <p className="text-sm font-bold text-orange-600">{post.author_name || "Hello World"}</p>
+                   {/* Display badge if available */}
+               {/* Display badge if available */}
+                              {post.author_id && authorBadges[post.author_id]?.length > 0 && (
+                                <div className="flex items-center gap-1 mt-1">
+                                  {authorBadges[post.author_id].map((badge, idx) => (
+                                    <div className="scale-80 transform-origin-right ml-[-12px]"> {/* Thu nhỏ xuống còn 75% */}
+                                    <UltraBadge 
+                                      key={idx} 
+                                      type={badge.type} 
+                                      label={badge.label} 
+                                    />
+                                  </div>
+                                  ))}
+                                </div>
+                              )}
                   <p className="text-xs text-gray-500">{formatPostDate(post.timestamp)}</p>
                   <p className="text-xs text-gray-400">đã đăng 1 bài</p>
                 </div>
@@ -630,6 +705,7 @@ const toggleLike = async (postId: string) => {
           postMedia={selectedPost.media} 
           author_name={selectedPost.author_name}
           author_avatar={selectedPost.author_avatar}
+          author_id={selectedPost.author_id}
         />
       )}
       <PostCreationButton />

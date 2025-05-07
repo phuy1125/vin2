@@ -8,7 +8,8 @@ import { AiOutlineHeart, AiOutlineComment, AiFillHeart, AiOutlinePlus} from 'rea
 import { useSearchParams } from 'next/navigation';
 import { Dialog } from '@headlessui/react';
 import jwt from "jsonwebtoken";
-
+import { getUserBadges, Badge as BadgeType } from '@/utils/userUtils';
+import UltraBadge from '@components/Badge/Badge'; // Import the Ultra Badge component
 
 interface MediaItem {
   media_url: string;
@@ -29,6 +30,7 @@ interface CommentModalProps {
   postMedia?: MediaItem[];
   author_name: string;
   author_avatar: string;
+  author_id: string;
 }
 
 interface Post {
@@ -38,6 +40,7 @@ interface Post {
   timestamp: string;
   author_name: string;
   author_avatar: string;
+  author_id: string;
   media: MediaItem[];
   tags: string[];
   likes: number;
@@ -45,15 +48,34 @@ interface Post {
   usersLiked?: string[];
 }
 
-function CommentModal({ onClose, postId, postMedia = [],author_name, author_avatar }: CommentModalProps) {
+function CommentModal({ onClose, postId, postMedia = [],author_name, author_avatar,author_id }: CommentModalProps) {
   const [comment, setComment] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [authorBadges, setAuthorBadges] = useState<BadgeType[]>([]);
+  const [loadingBadges, setLoadingBadges] = useState(false);
   // Default media if none is provided
   const media = postMedia.length > 0 ? postMedia : [{ media_url: '/img/placeholder.png' }];
+///Huy hieu
+  useEffect(() => {
+      const fetchAuthorBadges = async () => {
+        if (author_id) {
+          setLoadingBadges(true);
+          try {
+            const badges = await getUserBadges(author_id);
+            setAuthorBadges(badges);
+          } catch (error) {
+            console.error(`Error fetching badges for author ${author_id}:`, error);
+          } finally {
+            setLoadingBadges(false);
+          }
+        }
+      };
+  
+      fetchAuthorBadges();
+    }, [author_id]);
 
   // Fetch comments from the database
   const fetchComments = useCallback(async () => {
@@ -86,7 +108,10 @@ function CommentModal({ onClose, postId, postMedia = [],author_name, author_avat
     if (!comment.trim()) return;
     const userId = localStorage.getItem('userId');
     if (!userId) {
-      window.location.href = '/login';
+      setError('Bạn cần đăng nhập để bình luận.');
+      setTimeout(() => {
+        window.location.href = '/login'; // Redirect to the login page after a short delay
+      }, 1000); // Delay in milliseconds (2000ms = 2 seconds)
       return;
     }
     try {
@@ -164,6 +189,19 @@ function CommentModal({ onClose, postId, postMedia = [],author_name, author_avat
         <div className="flex items-center gap-2 border-b border-gray-700 pb-2 relative">
           <Image src={author_avatar} alt="avatar" width={32} height={32} className="rounded-full" />
           <p className="font-semibold">{author_name}</p>
+
+          {authorBadges.length > 0 && (
+                          <div className="flex items-center gap-1 scale-90 transform-origin-left">
+                            {authorBadges.map((badge, idx) => (
+                              <UltraBadge 
+                                key={idx} 
+                                type={badge.type} 
+                                label={badge.label} 
+                              />
+                            ))}
+                          </div>
+                        )}
+
           <button 
             onClick={onClose} 
             className="absolute top-2 right-2 text-black/50 hover:text-indigo-700 cursor-pointer font-bold">
@@ -243,7 +281,8 @@ export default function SpaceShare(req: Request) {
   const [locationName, setLocationName] = useState<string | null>(null);
   const params = useParams<{ id: string }>();
   const locationId = params?.id ?? null;
-
+  // Thêm vào danh sách các state ở đầu component
+  const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
 
   const filteredPosts = selectedTag
   ? posts.filter(post => post.tags.includes(selectedTag))
@@ -332,31 +371,14 @@ export default function SpaceShare(req: Request) {
 
 // Toggle like for a post
 const toggleLike = async (postId: string) => {
-  // Optimistically update UI
-  setLikedPosts((prev) => {
-    const newLikedPosts = { ...prev, [postId]: !prev[postId] };
-
-    // Save the updated likes status to localStorage
-    localStorage.setItem("likedPosts", JSON.stringify(newLikedPosts));
-
-    return newLikedPosts;
-  });
-
-  // Update the post likes in the local state
-  setPosts((prevPosts) =>
-    prevPosts.map((post) => {
-      if (post._id === postId) {
-        return {
-          ...post,
-          likes: likedPosts[postId] ? post.likes - 1 : post.likes + 1,
-        };
-      }
-      return post;
-    })
-  );
-
+  if (!currentUserId) {
+    setError('Bạn cần đăng nhập để bình luận.');
+      setTimeout(() => {
+        window.location.href = '/login'; // Redirect to the login page after a short delay
+      }, 1000); // Delay in milliseconds (2000ms = 2 seconds)
+    return;
+  }
   try {
-    // Send request to backend to update like count
     const response = await fetch(`/api/posts/${postId}/like`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -367,47 +389,43 @@ const toggleLike = async (postId: string) => {
       throw new Error("Failed to update like");
     }
 
-    // Process response
     const data = await response.json();
 
-    // Update UI with the result from server
     if (data.success) {
+      setLikedPosts((prev) => ({
+        ...prev,
+        [postId]: data.liked,
+      }));
+
       setPosts((prevPosts) =>
         prevPosts.map((post) => {
           if (post._id === postId) {
+            const updatedUsersLiked = post.usersLiked ? [...post.usersLiked] : [];
+
+            if (data.liked) {
+              // Nếu đã like
+              if (!updatedUsersLiked.includes(currentUserId!)) {
+                updatedUsersLiked.push(currentUserId!);
+              }
+            } else {
+              // Nếu đã unlike
+              const index = updatedUsersLiked.indexOf(currentUserId!);
+              if (index !== -1) {
+                updatedUsersLiked.splice(index, 1);
+              }
+            }
+
             return {
               ...post,
-              likes: data.likesCount,
+              usersLiked: updatedUsersLiked,
             };
           }
           return post;
         })
       );
-
-      setLikedPosts((prev) => ({
-        ...prev,
-        [postId]: data.liked,
-      }));
     }
   } catch (error) {
     console.error("Error updating like:", error);
-    // Revert optimistic update if there was an error
-    setLikedPosts((prev) => ({
-      ...prev,
-      [postId]: !prev[postId],
-    }));
-
-    setPosts((prevPosts) =>
-      prevPosts.map((post) => {
-        if (post._id === postId) {
-          return {
-            ...post,
-            likes: likedPosts[postId] ? post.likes + 1 : post.likes - 1,
-          };
-        }
-        return post;
-      })
-    );
   }
 };
 
@@ -439,6 +457,31 @@ const toggleLike = async (postId: string) => {
     }
   }, [posts]);
 
+  const [authorBadges, setAuthorBadges] = useState<Record<string, BadgeType[]>>({});
+   // Add this useEffect to fetch badges for each post author
+        useEffect(() => {
+          const fetchBadgesForPosts = async () => {
+            if (posts.length > 0) {
+              const badgeMap: Record<string, BadgeType[]> = {};
+              
+              for (const post of posts) {
+                if (post.author_id) {
+                  try {
+                    const authorBadges = await getUserBadges(post.author_id);
+                    badgeMap[post.author_id] = authorBadges;
+                  } catch (error) {
+                    console.error(`Error fetching badges for author ${post.author_id}:`, error);
+                  }
+                }
+              }
+              
+              // Store the badges in state
+              setAuthorBadges(badgeMap);
+            }
+          };
+  
+    fetchBadgesForPosts();
+  }, [posts]);
 
   // Navigation functions for post images
   const nextImage = (postId: string, postIndex: number) => {
@@ -523,13 +566,54 @@ const toggleLike = async (postId: string) => {
                 />
                 <div>
                   <p className="text-sm font-bold text-orange-600">{post.author_name || "Hello World"}</p>
+                   {/* Display badge if available */}
+               {/* Display badge if available */}
+                              {post.author_id && authorBadges[post.author_id]?.length > 0 && (
+                                <div className="flex items-center gap-1 mt-1">
+                                  {authorBadges[post.author_id].map((badge, idx) => (
+                                    <div className="scale-80 transform-origin-right ml-[-12px]"> {/* Thu nhỏ xuống còn 75% */}
+                                    <UltraBadge 
+                                      key={idx} 
+                                      type={badge.type} 
+                                      label={badge.label} 
+                                    />
+                                  </div>
+                                  ))}
+                                </div>
+                              )}
                   <p className="text-xs text-gray-500">{formatPostDate(post.timestamp)}</p>
                   <p className="text-xs text-gray-400">đã đăng 1 bài</p>
                 </div>
               </div>
 
               {/* Content */}
-              <p className="mb-3 text-gray-500">{post.content}</p>
+              <div className="mt-2">
+                    <p className={`text-gray-500 mb-3 ${expandedPosts[post._id] ? '' : 'line-clamp-3'}`}>
+                      {post.content}
+                    </p>
+
+                    {/* Nếu content dài thì mới show nút Xem thêm */}
+                    {post.content.length > 100 && (
+                      <button
+                        onClick={() => setExpandedPosts(prev => ({ ...prev, [post._id]: !prev[post._id] }))}
+                        className="mb-3 text-blue-500 text-xs underline rounded-full px-3 py-1 border border-blue-500 hover:bg-blue-500 hover:text-white transition-colors duration-300 flex items-center gap-1"
+                      >
+                        <span>
+                          {expandedPosts[post._id] ? 'Thu gọn' : 'Xem thêm'}
+                        </span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={`h-3 w-3 transition-transform duration-300 ${expandedPosts[post._id] ? 'rotate-180' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+
 
               {/* Show media if available */}
               {post.media && post.media.length > 0 && (
@@ -596,7 +680,7 @@ const toggleLike = async (postId: string) => {
                   ) : (
                     <AiOutlineHeart className="text-2xl" />
                   )}
-                  <span>{post.likes}</span>
+                  <span>{post.usersLiked?.length ?? post.likes ?? 0}</span>
               </div>
                 <div
                   onClick={() => openCommentModal(post)}
@@ -613,31 +697,6 @@ const toggleLike = async (postId: string) => {
       </div>
 
       <div className="hidden md:block w-px bg-gray-300"></div> 
-
-      {/* RIGHT COLUMN */}
-      <div className="w-full md:w-64">
-        <div className="bg-purple-100 p-4 rounded-lg">
-          <h3 className="text-lg text-black font-semibold mb-2">Địa điểm</h3>
-          <div className="w-12 h-1 bg-purple-500 mb-4 rounded-full" />
-
-          {/* List tags */}
-          <ul className="space-y-3 text-gray-800 max-h-[500px] overflow-y-auto">
-              {["Bắc Ninh", "Hưng Yên", "Thái Nguyên", "Đắk Lắk"].map((tag) => (
-                <li
-                  key={tag}
-                  className={`flex justify-between bg-purple-400 text-sm rounded-full px-4 py-1 cursor-pointer hover:bg-purple-600 ${
-                    selectedTag === tag ? "ring-2 ring-white" : ""
-                  }`}
-                  onClick={() => setSelectedTag(tag === selectedTag ? null : tag)} // toggle tag
-                >
-                  <span>#{tag}</span>
-                  {/* Bạn có thể tính số bài viết theo tag tại đây nếu muốn */}
-                </li>
-              ))}
-            </ul>
-        </div>
-      </div>
-
       {/* Comment Modal */}
       {showCommentModal && selectedPost && (
         <CommentModal 
@@ -646,6 +705,7 @@ const toggleLike = async (postId: string) => {
           postMedia={selectedPost.media} 
           author_name={selectedPost.author_name}
           author_avatar={selectedPost.author_avatar}
+          author_id={selectedPost.author_id}
         />
       )}
       <PostCreationButton />
@@ -735,6 +795,7 @@ function PostCreationButton() {
       setImages([]);
       setImagePreviews([]);
       setIsOpen(false);
+      window.location.reload();
     } else {
       console.error("Lỗi khi đăng bài viết");
     }

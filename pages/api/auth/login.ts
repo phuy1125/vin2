@@ -38,6 +38,11 @@ export default async function handler(
       return res.status(400).json({ message: "Thông tin đăng nhập không hợp lệ" });
     }
 
+    // Kiểm tra xem người dùng đã xác thực chưa
+    if (!user.isVerified) {
+      return res.status(400).json({ message: "Tài khoản chưa được xác thực. Vui lòng kiểm tra email của bạn." });
+    }
+
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
     if (!isPasswordCorrect) {

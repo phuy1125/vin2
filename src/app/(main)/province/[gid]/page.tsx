@@ -107,7 +107,7 @@ export default function ProvincePage() {
   {/* Dynamic background - có thể thay thế bằng ảnh đại diện của tỉnh */}
   <div className="absolute inset-0 overflow-hidden">
     <Image 
-      src="/img/bmt_daklak.jpg" 
+      src="/img/Canhdep_Vietnam-1.jpg" 
       alt={`${province.name} background`}
       fill
       className="object-cover"

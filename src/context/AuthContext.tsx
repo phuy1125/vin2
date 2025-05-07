@@ -19,6 +19,7 @@ interface AuthContextType {
   logout: () => void;
   updateUserName: (newUserName: string) => void;
   updateAvatar: (newAvatar: string) => void;  // Thêm hàm cập nhật avatar
+  likedPosts: Record<string, boolean>; // thêm
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,6 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userName, setUserName] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);  // Lưu userId trong state
   const [avatar, setAvatar] = useState<string | null>(null);  // Lưu avatar trong state
+  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
 
   // ✅ Hàm fetch liked posts chung
   const fetchLikedPosts = async (userId: string) => {
@@ -165,6 +167,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         updateUserName,
         updateAvatar, // Thêm hàm updateAvatar vào context
+        likedPosts, // thêm likedPosts ở đây
       }}
     >
       {children}

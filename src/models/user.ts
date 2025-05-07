@@ -5,7 +5,11 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
-  avatar?: string;  // Thêm trường avatar
+  avatar?: string;
+  isVerified: boolean;
+  verificationToken: string | null;
+  resetPasswordToken: string | null;
+  resetPasswordExpires: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,7 +19,13 @@ const UserSchema: Schema<IUser> = new mongoose.Schema(
     username: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    avatar: { type: String, default: "" }, // Thêm trường avatar, mặc định là chuỗi rỗng
+    avatar: { type: String, default: "" },
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String, default: null },
+
+    // ✅ Thêm mới cho chức năng quên mật khẩu
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
   },
   { timestamps: true }
 );

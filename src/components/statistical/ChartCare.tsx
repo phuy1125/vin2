@@ -14,6 +14,10 @@ const PROVINCE_NAMES: Record<number, string> = {
   56:"Thừa Thiên HuếHuế",
   21:"Gia Lai",
   16: "Đắk Lắk",
+  44: "Phú Yên",
+  48:"Quảng Ninh",
+  17:"Đak Nông",
+  45:"Quảng Bình",  
 };
 
 interface ProvinceEngagement {

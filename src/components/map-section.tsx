@@ -36,23 +36,6 @@ export default function MapSection() {
             Khám phá Việt Nam
           </h3>
         </div>
-        <div className="flex gap-1">
-          <button className="p-1.5 text-gray-500 hover:text-teal-500 hover:bg-gray-50 rounded-md transition-colors">
-            <Layers size={16} />
-          </button>
-          <button className="p-1.5 text-gray-500 hover:text-teal-500 hover:bg-gray-50 rounded-md transition-colors">
-            <Navigation size={16} />
-          </button>
-          <button className="p-1.5 text-gray-500 hover:text-teal-500 hover:bg-gray-50 rounded-md transition-colors">
-            <Info size={16} />
-          </button>
-          <button
-            className="p-1.5 text-gray-500 hover:text-teal-500 hover:bg-gray-50 rounded-md transition-colors"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            {isExpanded ? <Minimize size={16} /> : <Maximize size={16} />}
-          </button>
-        </div>
       </div>
 
       {/* Map Content */}

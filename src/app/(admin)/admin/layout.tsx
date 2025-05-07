@@ -1,4 +1,6 @@
 //src\app\(admin)\admin\layout.tsx
+"use client"
+import { AdminAuthProvider } from "@/context/AdminAuthContext";
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import {
@@ -8,6 +10,7 @@ import {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
+    <AdminAuthProvider>
     <SidebarProvider
       style={
         {
@@ -28,5 +31,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </SidebarInset>
     </SidebarProvider>
+    </AdminAuthProvider>
   )
 }

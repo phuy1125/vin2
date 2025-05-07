@@ -4,7 +4,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import jwt from 'jsonwebtoken'
-
+import { useRouter } from "next/navigation";
 interface AdminAuthContextType {
   isAdminLoggedIn: boolean
   adminId: string | null
@@ -17,6 +17,7 @@ const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefin
 export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)
   const [adminId, setAdminId] = useState<string | null>(null)
+  const router = useRouter(); 
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken')
@@ -46,6 +47,7 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('adminToken')
     setIsAdminLoggedIn(false)
     setAdminId(null)
+    router.push("/admin-login");
   }
 
   return (

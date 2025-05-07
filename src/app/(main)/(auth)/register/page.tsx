@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-
+import { RegisterFormSchema } from "@lib/rules"; // Import Zod schema
 
 export default function Register() {
   const [username, setUsername] = useState<string>(""); // NEW
@@ -22,11 +22,23 @@ export default function Register() {
     setError(null);
     setLoading(true);
 
+    // Xác thực form bằng Zod
+    const formData = { username, email, password, confirmPassword };
+    const result = RegisterFormSchema.safeParse(formData);
+
+    if (!result.success) {
+      // Hiển thị lỗi xác thực
+      const errorMessages = result.error.errors.map((err) => err.message).join(", ");
+      setError(errorMessages);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, confirmPassword }), // UPDATE
+        body: JSON.stringify(formData),
       });
 
       const data = await res.json();
@@ -70,7 +82,6 @@ export default function Register() {
               </div>
             )}
 
-            {/* NEW: Input tên người dùng */}
             <div>
               <label className="text-slate-800 text-sm font-medium mb-2 block">
                 Tên người dùng

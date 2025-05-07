@@ -3,15 +3,15 @@ import { z } from "zod";
 // Schema xác thực form đăng ký
 export const RegisterFormSchema = z
   .object({
-    email: z.string().email({ message: "Please enter a valid email." }).trim(),
+    email: z.string().email({ message: "Vui lòng nhập một email hợp lệ." }).trim(),
     password: z
       .string()
-      .min(1, { message: "Not be empty" })
-      .min(5, { message: "Be at least 5 characters long" })
-      .regex(/[a-zA-Z]/, { message: "Contain at least one letter." })
-      .regex(/[0-9]/, { message: "Contain at least one number." })
+      .min(1, { message: "Không được để trống" })
+      .min(8, { message: "Mật khẩu phải có ít nhất 8 ký tự" })
+      .regex(/[a-zA-Z]/, { message: "Mật khẩu phải chứa ít nhất một chữ cái." })
+      .regex(/[0-9]/, { message: "Mật khẩu phải chứa ít nhất một số." })
       .regex(/[^a-zA-Z0-9]/, {
-        message: "Contain at least one special character.",
+        message: "Mật khẩu phải chứa ít nhất một ký tự đặc biệt.",
       })
       .trim(),
     confirmPassword: z.string().trim(),
@@ -20,7 +20,7 @@ export const RegisterFormSchema = z
     if (val.password !== val.confirmPassword) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Password fields do not match.",
+        message: "Mật khẩu và xác nhận mật khẩu không khớp.",
         path: ["confirmPassword"],
       });
     }

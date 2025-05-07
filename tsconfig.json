@@ -25,7 +25,8 @@
       "@context/*": ["./src/context/*"],
       "@components/*": ["./src/components/*"],
       "@hooks/*": ["./src/hooks/*"],
-      "@actions/*": ["./src/actions/*"]
+      "@actions/*": ["./src/actions/*"],
+      "@/utils/*": ["./src/utils/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/(main)/posts/route.ts"],

@@ -3,6 +3,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { MessageSquare, PenSquare, MoreHorizontal } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
+
 
 type SidebarProps = {
   onNewThread: () => void;
@@ -202,11 +204,12 @@ const Sidebar = forwardRef<SidebarHandle, SidebarProps>(
           >
             <span>Cuộc trò chuyện mới</span>
           </button>
-
+          <Link href="/schedules">
           <button className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-600 rounded-lg hover:bg-gray-100 transition-all">
             <PenSquare size={18} />
-            <span>Tạo lịch trình</span>
+            <span>Lịch trình của bạn</span>
           </button>
+          </Link>
         </div>
 
         {/* Thông tin người dùng */}

@@ -9,8 +9,11 @@ export enum Intent {
   Destination = "destination",
   Transportation = "transportation",
   Activities = "activities",
+  Weather = "weather",
   Itinerary = "addItinerary",
   GenerateItinerary = "generateItinerary",
+  FindItinerary = "findItinerary",
+  UpdateItinerary = "updateItinerary",
 }
 
 export const GraphAnnotation = Annotation.Root({
@@ -22,6 +25,8 @@ export const GraphAnnotation = Annotation.Root({
   last_intent: Annotation<Intent>,
 
   userId: Annotation<string>(),
+
+  iTineraryId: Annotation<string>(),
 });
 
 export type GraphAnnotationType = typeof GraphAnnotation.State;

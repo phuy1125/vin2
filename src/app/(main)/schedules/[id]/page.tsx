@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
 // StrictMode fix không cần thiết nữa vì chúng ta không dùng react-beautiful-dnd
 const useStrictModeDndFix = () => {
@@ -36,54 +36,65 @@ export default function EditSchedulePage({ params }) {
       }
 
       const res = await fetch(`/api/schedules/${id}?userId=${userId}`);
-      
+
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(`API returned ${res.status}: ${errorData.error || 'Unknown error'}`);
+        throw new Error(
+          `API returned ${res.status}: ${errorData.error || "Unknown error"}`
+        );
       }
-      
+
       const data = await res.json();
       // Đảm bảo mỗi day có một id duy nhất và ổn định
       if (data && data.itinerary) {
         data.itinerary = data.itinerary.map((day, index) => ({
           ...day,
-          tempId: day._id || `day-${index}-${Date.now()}` // Tạo ID tạm thời nếu không có _id
+          tempId: day._id || `day-${index}-${Date.now()}`, // Tạo ID tạm thời nếu không có _id
         }));
       }
-      
+
       // Chuyển đổi định dạng dữ liệu từ DB để phù hợp với giao diện
       if (data && data.itinerary) {
-        data.itinerary = data.itinerary.map(day => {
+        data.itinerary = data.itinerary.map((day) => {
           // Định dạng lại dữ liệu cho mỗi thời điểm trong ngày
           const formatTimeOfDay = (timeOfDay) => {
-            if (!day[timeOfDay] || !day[timeOfDay].activities || day[timeOfDay].activities.length === 0) {
-              return { activity: '', cost: 0 };
+            if (
+              !day[timeOfDay] ||
+              !day[timeOfDay].activities ||
+              day[timeOfDay].activities.length === 0
+            ) {
+              return { activity: "", cost: 0 };
             }
-            
+
             // Ghép các mô tả hoạt động thành một chuỗi và tính tổng chi phí
             const activity = day[timeOfDay].activities
-              .map(act => act.description)
-              .filter(desc => desc && desc.trim().length > 0)
-              .join('\n');
-              
-            const cost = day[timeOfDay].activities.reduce((sum, act) => sum + (act.cost || 0), 0);
-            
+              .map((act) => act.description)
+              .filter((desc) => desc && desc.trim().length > 0)
+              .join("\n");
+
+            const cost = day[timeOfDay].activities.reduce(
+              (sum, act) => sum + (act.cost || 0),
+              0
+            );
+
             return { activity, cost };
           };
-          
+
           return {
             ...day,
-            morning: formatTimeOfDay('morning'),
-            afternoon: formatTimeOfDay('afternoon'),
-            evening: formatTimeOfDay('evening')
+            morning: formatTimeOfDay("morning"),
+            afternoon: formatTimeOfDay("afternoon"),
+            evening: formatTimeOfDay("evening"),
           };
         });
       }
-      
+
       setItinerary(data);
     } catch (error) {
       console.error("Failed to load itinerary", error);
-      setError(`Lỗi: ${error instanceof Error ? error.message : String(error)}`);
+      setError(
+        `Lỗi: ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
       setLoading(false);
     }
@@ -93,30 +104,90 @@ export default function EditSchedulePage({ params }) {
   const moveDay = (fromIndex, toIndex) => {
     // Đóng dropdown sau khi di chuyển
     setOpenDropdown(null);
-    
+
     // Nếu vị trí không thay đổi, không làm gì cả
     if (fromIndex === toIndex) return;
-    
+
     // Tạo bản sao mới của mảng itinerary để tránh thay đổi trực tiếp state
     const items = Array.from(itinerary.itinerary);
-    
+
     // Xóa phần tử được di chuyển khỏi vị trí cũ
     const [movedItem] = items.splice(fromIndex, 1);
-    
+
     // Chèn phần tử vào vị trí mới
     items.splice(toIndex, 0, movedItem);
 
     // Cập nhật lại số thứ tự ngày
     const updatedItems = items.map((item, index) => ({
       ...item,
-      day: index + 1
+      day: index + 1,
     }));
 
     // Cập nhật state với thứ tự mới
     setItinerary({
       ...itinerary,
-      itinerary: updatedItems
+      itinerary: updatedItems,
     });
+  };
+  const handleDeleteDay = (dayId: string) => {
+    // Lọc ra những ngày không bị xóa
+    const updatedItinerary = itinerary.itinerary.filter(day => day._id !== dayId);
+    
+    // Cập nhật lại số thứ tự ngày (day number) cho tất cả các ngày
+    const reindexedItinerary = updatedItinerary.map((day, index) => ({
+      ...day,
+      day: index + 1 // Cập nhật lại số thứ tự ngày
+    }));
+    
+    // Cập nhật state với lịch trình mới
+    setItinerary({
+      ...itinerary,
+      itinerary: reindexedItinerary
+    });
+  };
+  
+  // Hàm thêm ngày mới vào lịch trình
+  const addNewDay = () => {
+    if (!itinerary || !itinerary.itinerary) return;
+    
+    // Tạo bản sao mới của mảng itinerary
+    const newItems = Array.from(itinerary.itinerary);
+    
+    // Tạo ngày mới với số thứ tự là ngày cuối cùng + 1
+    const newDayNumber = newItems.length + 1;
+    const generateTempObjectId = () => {
+      // Tạo một chuỗi 24 ký tự hex để mô phỏng MongoDB ObjectId
+      return Array.from({ length: 24 }, () => 
+        Math.floor(Math.random() * 16).toString(16)
+      ).join('');
+    };
+    const newObjectId = generateTempObjectId();
+    // Tạo một ngày mới với cấu trúc tương tự các ngày hiện có
+    const newDay = {
+      day: newDayNumber,
+      _id: newObjectId,
+      tempId: `day-${newDayNumber}-${Date.now()}`,
+      morning: { activity: '', cost: 0 },
+      afternoon: { activity: '', cost: 0 },
+      evening: { activity: '', cost: 0 }
+    };
+    
+    // Thêm ngày mới vào cuối mảng
+    newItems.push(newDay);
+    
+    // Cập nhật state với ngày mới
+    setItinerary({
+      ...itinerary,
+      itinerary: newItems
+    });
+    
+    // Tự động cuộn xuống ngày mới thêm vào
+    setTimeout(() => {
+      const newDayElement = document.getElementById(`day-${newDay.tempId}`);
+      if (newDayElement) {
+        newDayElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
   };
 
   // Toggle dropdown
@@ -132,36 +203,44 @@ export default function EditSchedulePage({ params }) {
   useEffect(() => {
     const handleClickOutside = (event) => {
       // Kiểm tra nếu click không phải vào dropdown hoặc nút toggle
-      if (openDropdown !== null && !event.target.closest('.dropdown-menu') && !event.target.closest('.dropdown-toggle')) {
+      if (
+        openDropdown !== null &&
+        !event.target.closest(".dropdown-menu") &&
+        !event.target.closest(".dropdown-toggle")
+      ) {
         setOpenDropdown(null);
       }
     };
-    
+
     // Thêm event listener
-    document.addEventListener('mousedown', handleClickOutside);
-    
+    document.addEventListener("mousedown", handleClickOutside);
+
     // Cleanup event listener khi component unmount
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [openDropdown]);
 
   const handleActivityChange = (dayIndex, timeOfDay, field, value) => {
     const updatedItinerary = { ...itinerary };
-    
+
     // Ensure the activity object exists
     if (!updatedItinerary.itinerary[dayIndex][timeOfDay]) {
-      updatedItinerary.itinerary[dayIndex][timeOfDay] = { activity: '', cost: 0 };
+      updatedItinerary.itinerary[dayIndex][timeOfDay] = {
+        activity: "",
+        cost: 0,
+      };
     }
-    
-    updatedItinerary.itinerary[dayIndex][timeOfDay][field] = field === 'cost' ? Number(value) : value;
+
+    updatedItinerary.itinerary[dayIndex][timeOfDay][field] =
+      field === "cost" ? Number(value) : value;
     setItinerary(updatedItinerary);
   };
 
   const handleGeneralInfoChange = (field, value) => {
     setItinerary({
       ...itinerary,
-      [field]: value
+      [field]: value,
     });
   };
 
@@ -174,45 +253,45 @@ export default function EditSchedulePage({ params }) {
       }
 
       // Chuyển đổi dữ liệu về định dạng của database trước khi gửi
-      const prepareItineraryForSave = itinerary.itinerary.map(day => {
+      const prepareItineraryForSave = itinerary.itinerary.map((day) => {
         // Chuyển đổi định dạng dữ liệu cho mỗi thời điểm trong ngày
         const formatTimeOfDayForSave = (timeOfDay) => {
           if (!day[timeOfDay] || !day[timeOfDay].activity) {
             return { activities: [] };
           }
-          
+
           // Tách nội dung hoạt động thành các hoạt động riêng biệt (dựa vào dấu xuống dòng)
           const activities = day[timeOfDay].activity
-            .split('\n')
-            .filter(line => line.trim().length > 0)
-            .map(description => ({
+            .split("\n")
+            .filter((line) => line.trim().length > 0)
+            .map((description) => ({
               description,
-              cost: 0 // Chi phí mặc định cho từng hoạt động
+              cost: 0, // Chi phí mặc định cho từng hoạt động
             }));
-          
+
           // Nếu có ít nhất một hoạt động, đặt tổng chi phí cho hoạt động đầu tiên
           if (activities.length > 0) {
             activities[0].cost = day[timeOfDay].cost || 0;
           }
-          
+
           return { activities };
         };
-        
+
         // Loại bỏ tempId trước khi gửi lên server
         const { tempId, morning, afternoon, evening, ...restDay } = day;
-        
+
         return {
           ...restDay,
-          morning: formatTimeOfDayForSave('morning'),
-          afternoon: formatTimeOfDayForSave('afternoon'),
-          evening: formatTimeOfDayForSave('evening')
+          morning: formatTimeOfDayForSave("morning"),
+          afternoon: formatTimeOfDayForSave("afternoon"),
+          evening: formatTimeOfDayForSave("evening"),
         };
       });
 
       const res = await fetch(`/api/schedules/${id}`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           userId,
@@ -220,38 +299,45 @@ export default function EditSchedulePage({ params }) {
             destination: itinerary.destination,
             duration: itinerary.duration,
             startDate: itinerary.startDate,
-            itinerary: prepareItineraryForSave
-          }
+            itinerary: prepareItineraryForSave,
+          },
         }),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || 'Lỗi cập nhật lịch trình');
+        throw new Error(errorData.error || "Lỗi cập nhật lịch trình");
       }
 
       // Navigate back to schedules page after successful save
-      router.push('/schedules');
+      router.push("/schedules");
     } catch (error) {
       console.error("Failed to save changes", error);
-      alert(`Lỗi khi lưu: ${error instanceof Error ? error.message : String(error)}`);
+      alert(
+        `Lỗi khi lưu: ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const formatCost = (cost) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cost);
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(cost);
   };
 
   const calculateTotalCost = () => {
     if (!itinerary || !itinerary.itinerary) return 0;
-    
+
     return itinerary.itinerary.reduce((total, day) => {
-      return total + 
-        (day.morning?.cost || 0) + 
-        (day.afternoon?.cost || 0) + 
-        (day.evening?.cost || 0);
+      return (
+        total +
+        (day.morning?.cost || 0) +
+        (day.afternoon?.cost || 0) +
+        (day.evening?.cost || 0)
+      );
     }, 0);
   };
 
@@ -270,8 +356,8 @@ export default function EditSchedulePage({ params }) {
       <div className="max-w-6xl mx-auto py-10 px-4">
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
           <p className="font-medium">Có lỗi xảy ra: {error}</p>
-          <button 
-            onClick={() => router.push('/schedules')}
+          <button
+            onClick={() => router.push("/schedules")}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
           >
             Quay lại
@@ -286,8 +372,8 @@ export default function EditSchedulePage({ params }) {
       <div className="max-w-6xl mx-auto py-10 px-4">
         <div className="bg-gray-50 border border-gray-200 p-8 rounded-lg text-center">
           <p className="text-xl text-gray-600">Không tìm thấy lịch trình.</p>
-          <button 
-            onClick={() => router.push('/schedules')}
+          <button
+            onClick={() => router.push("/schedules")}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Quay lại
@@ -296,14 +382,25 @@ export default function EditSchedulePage({ params }) {
       </div>
     );
   }
+  
+  // Cập nhật hiển thị thời gian (cập nhật duration dựa trên số ngày itinerary)
+  const updateDurationText = () => {
+    if (itinerary && itinerary.itinerary) {
+      const numDays = itinerary.itinerary.length;
+      return `${numDays} ngày`;
+    }
+    return itinerary.duration || '';
+  };
 
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-blue-800">Chỉnh sửa lịch trình</h1>
+        <h1 className="text-3xl font-bold text-blue-800">
+          Chỉnh sửa lịch trình
+        </h1>
         <div className="flex space-x-3">
           <button
-            onClick={() => router.push('/schedules')}
+            onClick={() => router.push("/schedules")}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md border border-gray-300 hover:bg-gray-200 transition-colors"
           >
             Hủy
@@ -313,51 +410,68 @@ export default function EditSchedulePage({ params }) {
             disabled={saving}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
-            {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
         </div>
       </div>
 
       {/* General Information */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Thông tin chung</h2>
-        
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">
+          Thông tin chung
+        </h2>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Điểm đến</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Điểm đến
+            </label>
             <input
               type="text"
-              value={itinerary.destination || ''}
-              onChange={(e) => handleGeneralInfoChange('destination', e.target.value)}
+              value={itinerary.destination || ""}
+              onChange={(e) =>
+                handleGeneralInfoChange("destination", e.target.value)
+              }
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Thời gian
+            </label>
             <input
               type="text"
-              value={itinerary.duration || ''}
-              onChange={(e) => handleGeneralInfoChange('duration', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={updateDurationText()}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
               readOnly
             />
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Ngày bắt đầu
+            </label>
             <input
               type="date"
-              value={itinerary.startDate ? new Date(itinerary.startDate).toISOString().split('T')[0] : ''}
-              onChange={(e) => handleGeneralInfoChange('startDate', e.target.value)}
+              value={
+                itinerary.startDate
+                  ? new Date(itinerary.startDate).toISOString().split("T")[0]
+                  : ""
+              }
+              onChange={(e) =>
+                handleGeneralInfoChange("startDate", e.target.value)
+              }
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-          
+
           <div className="flex items-end">
             <div className="bg-blue-50 p-3 rounded-md flex flex-col">
               <span className="text-sm text-gray-600">Tổng chi phí:</span>
-              <span className="text-lg font-bold text-blue-700">{formatCost(calculateTotalCost())}</span>
+              <span className="text-lg font-bold text-blue-700">
+                {formatCost(calculateTotalCost())}
+              </span>
             </div>
           </div>
         </div>
@@ -365,152 +479,277 @@ export default function EditSchedulePage({ params }) {
 
       {/* Itinerary Days */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Lịch trình theo ngày</h2>
-        <p className="text-gray-500 mb-6 italic">Sử dụng menu di chuyển để thay đổi thứ tự các ngày.</p>
-          
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">
+          Lịch trình theo ngày
+        </h2>
+        <p className="text-gray-500 mb-6 italic">
+          Sử dụng menu di chuyển để thay đổi thứ tự các ngày.
+        </p>
+
         <div className="space-y-6">
           {itinerary.itinerary.map((day, index) => (
             <div
               key={day.tempId}
+              id={`day-${day.tempId}`}
               className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50"
             >
               {/* Day Header với dropdown menu */}
-              <div className="bg-blue-500 text-white p-3 flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="h-8 w-8 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold mr-3">
-                    {day.day}
-                  </div>
-                  <h3 className="text-lg font-medium">Ngày {day.day}</h3>
-                </div>
-                
-                <div className="relative">
-                  <button 
-                    className="px-3 py-1 bg-blue-600 rounded flex items-center dropdown-toggle hover:bg-blue-700 transition-colors"
-                    onClick={() => toggleDropdown(index)}
+              {/* Day Header với dropdown menu */}
+              {/* Day Header với dropdown menu */}
+<div className="bg-blue-500 text-white p-3 flex items-center justify-between">
+  <div className="flex items-center">
+    <div className="h-8 w-8 rounded-full bg-white text-blue-600 flex items-center justify-center font-bold mr-3">
+      {day.day}
+    </div>
+    <h3 className="text-lg font-medium">Ngày {day.day}</h3>
+  </div>
+  
+  <div className="flex items-center space-x-2">
+    <button 
+      onClick={() => handleDeleteDay(day._id)}
+      className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded flex items-center transition-colors"
+      title="Xóa ngày"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+      <span className="ml-1 text-sm">Xóa</span>
+    </button>
+  
+    <div className="relative"> {/* Thêm div relative để bao quanh nút và dropdown */}
+      <button 
+        className="px-3 py-1 bg-blue-600 rounded flex items-center dropdown-toggle hover:bg-blue-700 transition-colors"
+        onClick={() => toggleDropdown(index)}
+      >
+        Di chuyển{" "}
+        <span className="ml-1">
+          {openDropdown === index ? "▲" : "▼"}
+        </span>
+      </button>
+
+      {openDropdown === index && (
+        <div className="absolute right-0 mt-1 bg-white shadow-lg rounded-md border border-gray-200 w-48 z-10 dropdown-menu">
+          <div className="p-2 text-gray-700 text-sm border-b">
+            Di chuyển đến vị trí:
+          </div>
+          {itinerary.itinerary.map((_, targetIndex) => (
+            <button
+              key={targetIndex}
+              onClick={() => moveDay(index, targetIndex)}
+              disabled={index === targetIndex}
+              className="w-full text-left p-2 hover:bg-blue-50 disabled:text-gray-400 disabled:hover:bg-white"
+            >
+              {index === targetIndex ? (
+                <span className="flex items-center text-black">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    Di chuyển <span className="ml-1">{openDropdown === index ? '▲' : '▼'}</span>
-                  </button>
-                  
-                  {openDropdown === index && (
-                    <div className="absolute right-0 top-10 bg-white shadow-lg rounded-md border border-gray-200 w-48 z-10 dropdown-menu">
-                      <div className="p-2 text-gray-700 text-sm border-b">Di chuyển đến vị trí:</div>
-                      {itinerary.itinerary.map((_, targetIndex) => (
-                        <button
-                          key={targetIndex}
-                          onClick={() => moveDay(index, targetIndex)}
-                          disabled={index === targetIndex}
-                          className="w-full text-left p-2 hover:bg-blue-50 disabled:text-gray-400 disabled:hover:bg-white"
-                        >
-                          {index === targetIndex ? (
-                            <span className="flex items-center text-black">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Ngày {targetIndex + 1} (vị trí hiện tại)
-                            </span>
-                          ) : (
-                            <span className="text-black">Ngày {targetIndex + 1}</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Ngày {targetIndex + 1} (vị trí hiện tại)
+                </span>
+              ) : (
+                <span className="text-black">
+                  Ngày {targetIndex + 1}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</div>
+
               {/* Day Content */}
               <div className="p-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Morning */}
                   <div className="bg-blue-50 p-4 rounded-md">
                     <h4 className="font-medium text-blue-800 mb-3 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"
+                        />
                       </svg>
                       Buổi sáng
                     </h4>
-                    
+
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Hoạt động</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Hoạt động
+                        </label>
                         <textarea
-                          value={day.morning?.activity || ''}
-                          onChange={(e) => handleActivityChange(index, 'morning', 'activity', e.target.value)}
+                          value={day.morning?.activity || ""}
+                          onChange={(e) =>
+                            handleActivityChange(
+                              index,
+                              "morning",
+                              "activity",
+                              e.target.value
+                            )
+                          }
                           className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           rows="3"
                         ></textarea>
                       </div>
-                      
+
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Chi phí (VND)</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Chi phí (VND)
+                        </label>
                         <input
                           type="number"
                           value={day.morning?.cost || 0}
-                          onChange={(e) => handleActivityChange(index, 'morning', 'cost', e.target.value)}
+                          onChange={(e) =>
+                            handleActivityChange(
+                              index,
+                              "morning",
+                              "cost",
+                              e.target.value
+                            )
+                          }
                           className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Afternoon */}
                   <div className="bg-amber-50 p-4 rounded-md">
                     <h4 className="font-medium text-amber-800 mb-3 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"
+                        />
                       </svg>
                       Buổi chiều
                     </h4>
-                    
+
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Hoạt động</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Hoạt động
+                        </label>
                         <textarea
-                          value={day.afternoon?.activity || ''}
-                          onChange={(e) => handleActivityChange(index, 'afternoon', 'activity', e.target.value)}
+                          value={day.afternoon?.activity || ""}
+                          onChange={(e) =>
+                            handleActivityChange(
+                              index,
+                              "afternoon",
+                              "activity",
+                              e.target.value
+                            )
+                          }
                           className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           rows="3"
                         ></textarea>
                       </div>
-                      
+
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Chi phí (VND)</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Chi phí (VND)
+                        </label>
                         <input
                           type="number"
                           value={day.afternoon?.cost || 0}
-                          onChange={(e) => handleActivityChange(index, 'afternoon', 'cost', e.target.value)}
+                          onChange={(e) =>
+                            handleActivityChange(
+                              index,
+                              "afternoon",
+                              "cost",
+                              e.target.value
+                            )
+                          }
                           className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Evening */}
                   <div className="bg-indigo-50 p-4 rounded-md">
                     <h4 className="font-medium text-indigo-800 mb-3 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                        />
                       </svg>
                       Buổi tối
                     </h4>
-                    
+
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Hoạt động</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Hoạt động
+                        </label>
                         <textarea
-                          value={day.evening?.activity || ''}
-                          onChange={(e) => handleActivityChange(index, 'evening', 'activity', e.target.value)}
+                          value={day.evening?.activity || ""}
+                          onChange={(e) =>
+                            handleActivityChange(
+                              index,
+                              "evening",
+                              "activity",
+                              e.target.value
+                            )
+                          }
                           className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           rows="3"
                         ></textarea>
                       </div>
-                      
+
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Chi phí (VND)</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Chi phí (VND)
+                        </label>
                         <input
                           type="number"
                           value={day.evening?.cost || 0}
-                          onChange={(e) => handleActivityChange(index, 'evening', 'cost', e.target.value)}
+                          onChange={(e) =>
+                            handleActivityChange(
+                              index,
+                              "evening",
+                              "cost",
+                              e.target.value
+                            )
+                          }
                           className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
@@ -520,13 +759,27 @@ export default function EditSchedulePage({ params }) {
               </div>
             </div>
           ))}
+          
+        </div>
+        
+        {/* Nút thêm lịch trình mới */}
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={addNewDay}
+            className="flex items-center justify-center bg-gradient-to-r from-blue-500 to-blue-900 text-white rounded-lg py-3 px-5 shadow-md hover:shadow-lg transform hover:translate-y-[-2px] transition-all duration-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="font-medium">Thêm ngày mới</span>
+          </button>
         </div>
       </div>
 
       {/* Bottom Action Buttons */}
       <div className="mt-8 flex justify-end space-x-3">
         <button
-          onClick={() => router.push('/schedules')}
+          onClick={() => router.push("/schedules")}
           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md border border-gray-300 hover:bg-gray-200 transition-colors"
         >
           Hủy
@@ -536,7 +789,7 @@ export default function EditSchedulePage({ params }) {
           disabled={saving}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
         >
-          {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+          {saving ? "Đang lưu..." : "Lưu thay đổi"}
         </button>
       </div>
     </div>

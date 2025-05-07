@@ -1,0 +1,41 @@
+/* LikeButton.css */
+.like-button {
+    position: relative;
+    transition: transform 0.2s ease;
+  }
+  
+  .like-button:active {
+    transform: scale(0.95);
+  }
+  
+  .heart-pop {
+    animation: heartPop 0.5s ease;
+  }
+  
+  @keyframes heartPop {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.4);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  .count-jump {
+    animation: countJump 0.5s ease;
+  }
+  
+  @keyframes countJump {
+    0% {
+      transform: translateY(0);
+    }
+    25% {
+      transform: translateY(-5px);
+    }
+    50% {
+      transform: translateY(0);
+    }
+  }

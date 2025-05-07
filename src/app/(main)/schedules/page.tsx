@@ -266,13 +266,9 @@ export default function SchedulePage() {
               <div className="flex flex-col md:flex-row md:items-center">
                 {/* Destination & Info */}
                 <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-5 text-white md:w-64 md:h-full flex flex-col justify-center">
-                  <h2 className="text-xl font-bold mb-1">
-                    {itinerary.destination || "Chưa có điểm đến"}
-                  </h2>
-                  <p className="text-blue-100 mb-2">
-                    {itinerary.duration || "Chưa có thời gian"}
-                  </p>
-
+                  <h2 className="text-xl font-bold mb-1">{itinerary.destination || "Chưa có điểm đến"}</h2>
+                  {/* <p className="text-blue-100 mb-2">{itinerary.duration || "Chưa có thời gian"}</p> */}
+                  <div className="h-8"></div>
                   <div className="flex items-center mt-1">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"

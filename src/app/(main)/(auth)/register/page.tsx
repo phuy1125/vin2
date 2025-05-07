@@ -60,7 +60,7 @@ export default function Register() {
 
   return (
     <div className="flex flex-col justify-center sm:h-screen p-4">
-      <div className="max-w-md w-full mx-auto border-4 border-slate-300 rounded-2xl p-8">
+      <div className="max-w-md w-full mx-auto  border-4 border-slate-300 rounded-2xl px-8 py-3">
         <div className="text-center mb-8">
           <Image
             src="/img/Logo_merus.png"
@@ -125,6 +125,13 @@ export default function Register() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <div className="mt-2 text-xs text-gray-500">
+                <ul className="list-disc pl-5">
+                  <li>Mật khẩu phải có ít nhất 8 ký tự.</li>
+                  <li>Phải có ít nhất một chữ cái viết hoa và một chữ cái viết thường.</li>
+                  <li>Phải có ít nhất một số và một kí tự đặc biệt</li>
+                </ul>
+              </div>
             </div>
 
             <div>
@@ -157,8 +164,9 @@ export default function Register() {
               >
                 Tôi đồng ý với{" "}
                 <a
-                  href="javascript:void(0);"
+                  href="/uploads/Điều Khoản và Điều Kiện của VintelliTour.pdf"
                   className="text-blue-600 font-medium hover:underline ml-1"
+                  target="_blank" // Đảm bảo file PDF mở trong tab mới
                 >
                   Điều khoản và Điều kiện
                 </a>
